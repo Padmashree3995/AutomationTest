@@ -1,0 +1,233 @@
+Test 1:
+1. A person with the following details:
+	a. Single,
+	b. 0 dependants,
+	c. buying a home to live in,
+	d. with income of $80,000,
+	e. other income $10,000,
+	f. living expenses $500,
+	g. current home loan repayments $0,
+	h. other loan repayments $100,
+	i. other commitments $0
+	j. and total credit card limits $10,000
+
+
+Step 1: Create a Feature File (borrowing_calculator.feature)
+
+@CalculatorTests
+Feature: Borrowing Calculator Tests
+Scenario: Calculate borrowing estimate for a person with specific details
+    Given I am on the borrowing calculator page
+    When I enter the following details:
+      | Marital Status| Dependents| Property Type|Income|Other Income|Expenses|Home Loan Repayments|Other Loan Repayments|Commitments| Credit Card Limit |
+      | Single        | 0         | Buying a Home| 80000| 10000      | 500    | 0                  | 100                 | 0         | 10000             |
+    And I click on the 'Work out how much I could borrow' button
+    Then I should see a borrowing estimate of $479,000
+
+Step 2: Create Page Object (BorrowingCalculatorPage.java)
+
+    public class BorrowingCalculatorPage {
+    private WebDriver driver;
+
+    public BorrowingCalculatorPage(WebDriver driver) {
+        this.driver = driver;
+    }
+
+    public void openPage(String url) {
+        driver.get(url);
+    }
+
+    public void enterDetails(String maritalStatus, String dependents, String propertyType, String income,
+                             String otherIncome, String expenses, String homeLoanRepayments, String otherLoanRepayments,
+                             String commitments, String creditCardLimit) {
+        // Fill in the form fields based on their IDs or names
+        driver.findElement(By.id("maritalStatus")).sendKeys(maritalStatus);
+        driver.findElement(By.id("dependents")).sendKeys(dependents);
+        driver.findElement(By.id("propertyType")).sendKeys(propertyType);
+        driver.findElement(By.id("income")).sendKeys(income);
+        driver.findElement(By.id("otherIncome")).sendKeys(otherIncome);
+        driver.findElement(By.id("expenses")).sendKeys(expenses);
+        driver.findElement(By.id("homeLoanRepayments")).sendKeys(homeLoanRepayments);
+        driver.findElement(By.id("otherLoanRepayments")).sendKeys(otherLoanRepayments);
+        driver.findElement(By.id("commitments")).sendKeys(commitments);
+        driver.findElement(By.id("creditCardLimit")).sendKeys(creditCardLimit);
+    }
+
+    public void clickCalculateButton() {
+        driver.findElement(By.id("calculateButton")).click();
+    }
+
+    public String getBorrowingEstimate() {
+        WebElement estimateElement = driver.findElement(By.id("borrowingEstimate"));
+        return estimateElement.getText();
+    }
+}
+
+
+Step 3: Create Step Definitions 
+
+    public class BorrowingCalculatorSteps {
+    private WebDriver driver;
+    private BorrowingCalculatorPage calculatorPage;
+
+    public BorrowingCalculatorSteps() {
+       
+    }
+
+    @Given("I am on the borrowing calculator page")
+    public void openBorrowingCalculatorPage() {
+        calculatorPage.openPage("https://www.anz.com.au/personal/home=s/calculators-tools/much-borrow/");
+    }
+
+    @When("I enter the following details:")
+    public void enterDetails(DataTable dataTable) {
+        List<Map<String, String>> details = dataTable.asMaps(String.class, String.class);
+        Map<String, String> detailsMap = details.get(0);
+        
+        calculatorPage.enterDetails(detailsMap.get("Marital Status"),
+                                    detailsMap.get("Dependents"),
+                                    detailsMap.get("Property Type"),
+                                    detailsMap.get("Income"),
+                                    detailsMap.get("Other Income"),
+                                    detailsMap.get("Expenses"),
+                                    detailsMap.get("Home Loan Repayments"),
+                                    detailsMap.get("Other Loan Repayments"),
+                                    detailsMap.get("Commitments"),
+                                    detailsMap.get("Credit Card Limit"));
+    }
+
+    @When("I click on the 'Work out how much I could borrow' button")
+    public void clickCalculateButton() {
+        calculatorPage.clickCalculateButton();
+    }
+
+    @Then("I should see a borrowing estimate of {string}")
+    public void verifyBorrowingEstimate(String expectedEstimate) {
+        String actualEstimate = calculatorPage.getBorrowingEstimate();
+        assertEquals(expectedEstimate, actualEstimate);
+    }
+}
+
+
+Step 4: Create Test Runner Class (TestRunner.java)
+
+@RunWith(Cucumber.class)
+@CucumberOptions(
+    features = "src/test/resources/features/borrowing_calculator.feature",
+    glue = "your.package.name.stepdefinitions",
+    tags="@CalculatorTests"
+)
+public class TestRunner {
+
+}
+
+**********************************************************************************************************************************************************
+
+Test 2:Clicking the ‘start over’ button clears the form
+
+Step 1:Create the Feature File
+
+@ClickStartOver
+Scenario: Clicking 'Start Over' button clears the form
+  Given I am on the borrowing calculator page
+  When I enter some details
+  And I click on the 'Start Over' button
+  Then the form should be cleared
+
+
+Step 2:Create the Step Definitions 
+
+@And("I click on the 'Start Over' button")
+public void clickStartOverButton() {
+    calculatorPage.clickStartOverButton();
+}
+
+@Then("the form should be cleared")
+public void verifyFormCleared() {
+    assertTrue(calculatorPage.isFormCleared());
+}
+
+Step 3: Create the Page Object
+
+public void clickStartOverButton() {
+    driver.findElement(By.id("startOverButton")).click();
+}
+
+public boolean isFormCleared() {
+      return isInputFieldEmpty("maritalStatus") &&
+           isInputFieldEmpty("dependents") &&
+           isInputFieldEmpty("propertyType") &&
+           // Check other fields as well...
+}
+
+private boolean isInputFieldEmpty(String fieldId) {
+    String fieldValue = driver.findElement(By.id(fieldId)).getAttribute("value");
+    return fieldValue.isEmpty();
+}
+
+************************************************************************************************************************************************************
+
+Test 3:Entering only $1 for Living expenses, and leaving all other fields as zero, clicking ‘Work out how much I could borrow’ returns the following message:“Based on the details you've entered, we're unable to give you an estimate of your borrowing power with this calculator. For questions, call us on 1800 100 641.”
+
+
+Step 1:Create the Feature File
+
+@VerifyErrorMessage
+Scenario: Entering $1 for Living expenses and zero for all other fields
+ Given I am on the borrowing calculator page
+ When I enter the following details:
+    | Marital Status| Dependents | Property Type| Income|Other Income|Expenses|Home Loan Repayments|Other Loan Repayments|Commitments|Credit Card Limit|
+    | Single        | 0          | Buying a Home| 0     | 0          | 1      | 0                  | 0                   | 0         | 0               |
+ And I click on the 'Work out how much I could borrow' button
+ Then I should see the error message:
+    
+Step 2:Create the Step Definitions
+
+@And("I click on the 'Work out how much I could borrow' button")
+public void clickCalculateButton() {
+    calculatorPage.clickCalculateButton();
+}
+
+@Then("I should see the error message:")
+public void verifyErrorMessage(String expectedErrorMessage) {
+    String actualErrorMessage = calculatorPage.getErrorMessage();
+    assertEquals(expectedErrorMessage, actualErrorMessage);
+}
+
+Step 3:Create the Page Object 
+
+Extend the page object class to include methods for getting the error message:
+
+public String getErrorMessage() {
+    WebElement errorMessageElement = driver.findElement(By.id("errorMessage"));
+    return errorMessageElement.getText();
+}
+
+************************************************************************************************************************************************************
+Questions
+
+1.What other tests would you suggest could be written. List them out? You do not need to write them out in detail or code them.
+Ans:
+*Test with minimum and maximum valid values for each input field 
+*Test with special characters or invalid input in input fields
+*Verify that appropriate error messages are displayed when required fields are left blank.
+*Test entering negative values for income, expenses, and loan repayments to ensure that the calculator handles them correctly
+*Test various validation messages for each field
+*Test that the calculator prevents submitting the form when validation fails
+*Create additional scenarios with different combinations of inputs to test a wide range of user profiles
+*If the application is available in multiple languages, test the calculator's functionality with different language settings
+*Verify that the calculator is accessible to users with disabilities by using automated accessibility testing tools
+
+2.If this test was part of a much larger test set, how would you speed it up?
+Ans:
+*Parallel Test Execution:Execute tests in parallel using tools or frameworks designed for parallel testing, such as TestNG 
+*Test Data Optimization:Minimize the amount of test data setup by reusing data whenever possible
+*Test Case Design:Keep test cases concise and avoid unnecessary repetition
+
+3.Sometimes UI tests can fail unpredictably. For example, the page may not have fully loaded before test automation attempts to click a button on a webpage. How would you improve reliability of these tests?
+Ans:
+Use Explicit Waits
+Parallel Testing
+Page Object Model
+
+
